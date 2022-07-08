@@ -70,10 +70,14 @@ def client() -> None:
 
             if msg == 'quit':
                 break
-            if msg == 'send':
+            elif msg == 'send':
                 print("Who do you want to send your message to? (enter receivers's username)")
                 receiver = input()
                 print("Enter your message:")
+                msg = input()
+            elif msg == 'addfriend':
+                receiver = "addfriend"
+                print("Who do you want to add as your friend? (enter username)")
                 msg = input()
 
             message_to_send = username + "," + receiver + "," + msg

@@ -38,16 +38,33 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
                 sender = parsed_message[0]
                 receiver = parsed_message[1]
                 messagebody = parsed_message[2]
+                sender_friends = script_path + "/db/usersinfo/" + sender + ".friends.txt"
+                receiver_friends = script_path + "/db/usersinfo/" + receiver + ".friends.txt"
 
-                receiver_filepath = script_path + "/db/messages/" + sender + "/" + receiver + ".txt"
-                f = Path(receiver_filepath)
-                f.touch(exist_ok=True)
+                if receiver == "addfriend":
+                    f = open(sender_friends,"a+")
+                    f.write(messagebody + "\n")
+                    f.close()
+                else:
+                    if os.path.exists(receiver_friends):
+                        h = open(receiver_friends, "r+")
+                        friends = [line for line in h.readlines()]
+                    else:
+                        friends = []
 
-                now = datetime.now()
-                with open(receiver_filepath, 'a+') as g:
-                    g.write('%s - %s sent a message to %s: %s\n' % (now,sender,receiver,messagebody))
+                    if (sender+"\n") in friends:
+                        receiver_filepath = script_path + "/db/messages/" + sender + "/" + receiver + ".txt"
+                        f = Path(receiver_filepath)
+                        f.touch(exist_ok=True)
+                        now = datetime.now()
 
-                broadcast(msg, connection)
+                        with open(receiver_filepath, 'a+') as g:
+                            g.write('%s - %s sent a message to %s: %s\n' % (now,sender,receiver,messagebody))
+
+                        broadcast(msg, connection)
+                    else:
+                        errmsg = "prompt:You are not in %s's friend list, and may not send message to them."  % receiver
+                        connection.send(errmsg.encode())
 
             # Close connection if no message was sent
             else:
@@ -137,7 +154,7 @@ def server() -> None:
                 socket_connection.send("prompt:Enter a username of your choice:".encode())
                 requesteduserid = (socket_connection.recv(32)).decode()
                 requesteduserid = requesteduserid[10:]
-                if not requesteduserid in userslist:
+                if not (requesteduserid+"\n") in userslist:
                     socket_connection.send("prompt:You may use this username.".encode())
                     socket_connection.send("prompt:Enter your desired password:".encode())
                     requestedpassword = (socket_connection.recv(32)).decode()
@@ -157,6 +174,10 @@ def server() -> None:
                     f = open(passpath,"a+")
                     f.write(requestedpassword)
                     f.close()
+
+                    userfriends = script_path + "/db/usersinfo/" + requesteduserid + ".friends.txt"
+                    f = Path(userfriends)
+                    f.touch(exist_ok=True)
 
                     user_message_path = script_path + "/db/messages/" + requesteduserid
                     Path(user_message_path).mkdir(parents=True, exist_ok=True)
