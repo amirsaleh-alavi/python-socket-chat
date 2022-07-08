@@ -111,11 +111,12 @@ def server() -> None:
 
             operation = SignInUp()
 
-            userslist_path = "/root/db/userslist.txt"
-            userslist_operation = open(userslist_path, "r+")
-            userslist = [line for line in userslist_operation.readlines()]
-
             def SignUp():
+
+                userslist_path = "/root/db/userslist.txt"
+                userslist_operation = open(userslist_path, "r+")
+                userslist = [line for line in userslist_operation.readlines()]
+
                 socket_connection.send("Enter a username of your choice:".encode())
                 requesteduserid = (socket_connection.recv(32)).decode()
                 requesteduserid = requesteduserid[12:]
@@ -147,6 +148,11 @@ def server() -> None:
                     return False
 
             def SignIn():
+
+                userslist_path = "/root/db/userslist.txt"
+                userslist_operation = open(userslist_path, "r+")
+                userslist = [line for line in userslist_operation.readlines()]
+
                 socket_connection.send("Enter your username:".encode())
                 username = (socket_connection.recv(32)).decode()
                 username = username[12:]
@@ -162,6 +168,8 @@ def server() -> None:
                     if password == correctpass:
                         socket_connection.send("Logged in successfully!".encode())
                         yourid = "yourid" + username
+                        print("sending messge:")
+                        print(yourid)
                         socket_connection.send(yourid.encode())
                         return True
                     else:
@@ -176,9 +184,11 @@ def server() -> None:
                 while True:
                     signupsuccess = SignUp()
                     if signupsuccess == True:
-                        signinsuccess = SignIn()
-                        if signinsuccess == True:
-                            break
+                        break
+                while True:
+                    signinsuccess = SignIn()
+                    if signinsuccess == True:
+                        break
             elif operation == "I":
                 while True:
                     signinsuccess = SignIn()
