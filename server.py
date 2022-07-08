@@ -15,22 +15,12 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
     while True:
         try:
             # Get client message
-            msg = connection.recv(1024)
+            msg = connection.recv(1024).decode()
 
             # If no message is received, there is a chance that connection has ended
             # so in this case, we need to close connection and remove it from connections list.
             if msg:
-                # Log message sent by user
-                print(f'{address[0]}:{address[1]} - {msg.decode()}')
-
-                parsed_message = msg.decode().split(",", 2)
-                sender = parsed_message[0]
-                receiver = parsed_message[1]
-                message = [2]
-                
-                # Build message format and broadcast to users connected on server
-                msg_to_send = f'From {address[0]}:{address[1]} - {msg.decode()}'
-                broadcast(message, connection, sender, receiver)
+                broadcast(msg, connection)
 
             # Close connection if no message was sent
             else:
@@ -42,8 +32,7 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
             remove_connection(connection)
             break
 
-
-def broadcast(message: str, connection: socket.socket, sender: str, receiver: str) -> None:
+def broadcast(message: str, connection: socket.socket) -> None:
     '''
         Broadcast message to all users connected to the server
     '''
@@ -53,11 +42,8 @@ def broadcast(message: str, connection: socket.socket, sender: str, receiver: st
         # Check if isn't the connection of who's send
         if client_conn != connection:
             try:
-                client_conn.send("id".encode())
-                received_id = client_conn.recv(1024)
-                if received_id.decode == receiver:
-                    # Sending message to client connection
-                    client_conn.send(message.encode())
+                # Sending message to client connection
+                client_conn.send(message.encode())
 
             # if it fails, there is a chance of socket has died
             except Exception as e:
@@ -100,9 +86,9 @@ def server() -> None:
 
             def SignInUp():
                 while True:
-                    socket_connection.send("SignIn (I), or SighUp (U)?".encode())
+                    socket_connection.send("prompt:SignIn (I), or SighUp (U)?".encode())
                     answer = socket_connection.recv(16).decode()
-                    answer = answer[12:]
+                    answer = answer[10:]
                     if answer in ("U", "I"):
                         return answer
                         break
@@ -117,14 +103,14 @@ def server() -> None:
                 userslist_operation = open(userslist_path, "r+")
                 userslist = [line for line in userslist_operation.readlines()]
 
-                socket_connection.send("Enter a username of your choice:".encode())
+                socket_connection.send("prompt:Enter a username of your choice:".encode())
                 requesteduserid = (socket_connection.recv(32)).decode()
-                requesteduserid = requesteduserid[12:]
+                requesteduserid = requesteduserid[10:]
                 if not requesteduserid in userslist:
-                    socket_connection.send("You may use this username.".encode())
-                    socket_connection.send("Enter your desired password:".encode())
+                    socket_connection.send("prompt:You may use this username.".encode())
+                    socket_connection.send("prompt:Enter your desired password:".encode())
                     requestedpassword = (socket_connection.recv(32)).decode()
-                    requestedpassword = requestedpassword[12:]
+                    requestedpassword = requestedpassword[10:]
                     
                     userslistpath = "/root/db/userslist.txt"
                     f = open(userslistpath,"a+")
@@ -141,10 +127,10 @@ def server() -> None:
                     f.write(requestedpassword)
                     f.close()
 
-                    socket_connection.send("You have been registered successfully. Now please log in.".encode())
+                    socket_connection.send("prompt:You have been registered successfully. Now please log in.".encode())
                     return True
                 else:
-                    socket_connection.send("This username is taken, try another one.".encode())
+                    socket_connection.send("prompt:This username is taken, try another one.".encode())
                     return False
 
             def SignIn():
@@ -153,12 +139,12 @@ def server() -> None:
                 userslist_operation = open(userslist_path, "r+")
                 userslist = [line for line in userslist_operation.readlines()]
 
-                socket_connection.send("Enter your username:".encode())
+                socket_connection.send("prompt:Enter your username:".encode())
                 username = (socket_connection.recv(32)).decode()
-                username = username[12:]
-                socket_connection.send("Enter your passowrd:".encode())
+                username = username[10:]
+                socket_connection.send("prompt:Enter your passowrd:".encode())
                 password = (socket_connection.recv(32)).decode()
-                password = password[12:]
+                password = password[10:]
 
                 if username+"\n" in userslist:
                     correctpasspath = "/root/db/usersinfo/"+username+".pass.txt"
@@ -166,17 +152,17 @@ def server() -> None:
                         correctpass = key.read().rstrip()
 
                     if password == correctpass:
-                        socket_connection.send("Logged in successfully!".encode())
+                        socket_connection.send("prompt:Logged in successfully!".encode())
                         yourid = "yourid" + username
                         print("sending messge:")
                         print(yourid)
                         socket_connection.send(yourid.encode())
                         return True
                     else:
-                        socket_connection.send("Username or Password in incorrect. Try again!".encode())
+                        socket_connection.send("prompt:Username or Password in incorrect. Try again!".encode())
                         return False
                 else:
-                    socket_connection.send("Username or Password in incorrect. Try again!".encode())
+                    socket_connection.send("prompt:Username or Password in incorrect. Try again!".encode())
                     return False
 
 
@@ -195,9 +181,6 @@ def server() -> None:
                     if signinsuccess == True:
                         break
 
-
-
-
             # Add client connection to connections list
             connections.append(socket_connection)
             # Start a new thread to handle client connection and receive it's messages
@@ -213,7 +196,6 @@ def server() -> None:
                 remove_connection(conn)
 
         socket_instance.close()
-
 
 if __name__ == "__main__":
     server()

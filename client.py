@@ -12,20 +12,24 @@ def handle_messages(connection: socket.socket):
     while True:
         try:
             msg = connection.recv(1024)
-            print (msg.decode())
 
             # If there is no message, there is a chance that connection has closed
             # so the connection will be closed and an error will be displayed.
             # If not, it will try to decode message in order to show to user.
             if msg:
-                if msg.decode() == "id":
-                    connection.send(username.encode())
-                elif msg.decode().startswith("yourid"):
+                if msg.decode().startswith("yourid"):
                     username = msg.decode()[6:]
-                    print("received username:")
-                    print(username)
+                elif msg.decode().startswith("prompt:"):
+                    print(msg.decode()[7:])
                 else:
-                    print(msg.decode())
+
+                    parsed_message = msg.decode().split(",", 2)
+                    sender = parsed_message[0]
+                    receiver = parsed_message[1]
+                    message = parsed_message[2]
+
+                    if receiver == username:
+                        print("Message from %s: %s" % (sender,message))
             else:
                 connection.close()
                 break
@@ -69,12 +73,10 @@ def client() -> None:
             if msg == 'send':
                 print("Who do you want to send your message to? (enter receivers's username)")
                 receiver = input()
-                print("your username:")
-                print(username)
                 print("Enter your message:")
                 msg = input()
 
-            message_to_send = username + ", " + receiver + ", " + msg
+            message_to_send = username + "," + receiver + "," + msg
             # Parse message to utf-8
             socket_instance.send(message_to_send.encode())
 
@@ -84,7 +86,6 @@ def client() -> None:
     except Exception as e:
         print(f'Error connecting to server socket {e}')
         socket_instance.close()
-
 
 if __name__ == "__main__":
     client()
