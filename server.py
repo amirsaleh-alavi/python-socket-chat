@@ -1,8 +1,22 @@
-import socket, threading, sys
+import socket, threading, sys, os
+from pathlib import Path
+from datetime import datetime
 
 if len(sys.argv) != 2:
     print("Correct usage: script, port number")
     exit()
+
+script_path = os.path.dirname(__file__)
+db_path = script_path + "/db"
+usersinfo_path = script_path + "/db/usersinfo"
+messages_path = script_path + "/db/messages"
+Path(db_path).mkdir(parents=True, exist_ok=True)
+Path(usersinfo_path).mkdir(parents=True, exist_ok=True)
+Path(messages_path).mkdir(parents=True, exist_ok=True)
+userslist_path = script_path + "/db/userslist.txt"
+with open(userslist_path, 'a+') as f:
+    f.write('')
+
 
 # Global variable that mantain client's connections
 connections = []
@@ -20,6 +34,19 @@ def handle_user_connection(connection: socket.socket, address: str) -> None:
             # If no message is received, there is a chance that connection has ended
             # so in this case, we need to close connection and remove it from connections list.
             if msg:
+                parsed_message = msg.split(",", 2)
+                sender = parsed_message[0]
+                receiver = parsed_message[1]
+                messagebody = parsed_message[2]
+
+                receiver_filepath = script_path + "/db/messages/" + sender + "/" + receiver + ".txt"
+                f = Path(receiver_filepath)
+                f.touch(exist_ok=True)
+
+                now = datetime.now()
+                with open(receiver_filepath, 'a+') as g:
+                    g.write('%s - %s sent a message to %s: %s\n' % (now,sender,receiver,messagebody))
+
                 broadcast(msg, connection)
 
             # Close connection if no message was sent
@@ -42,6 +69,11 @@ def broadcast(message: str, connection: socket.socket) -> None:
         # Check if isn't the connection of who's send
         if client_conn != connection:
             try:
+                # Log message sent by user
+                # print(f'{address[0]}:{address[1]} - {msg.decode()}')
+                
+                # Build message format and broadcast to users connected on server
+                # msg_to_send = f'From {address[0]}:{address[1]} - {msg.decode()}'
                 # Sending message to client connection
                 client_conn.send(message.encode())
 
@@ -99,7 +131,6 @@ def server() -> None:
 
             def SignUp():
 
-                userslist_path = "/root/db/userslist.txt"
                 userslist_operation = open(userslist_path, "r+")
                 userslist = [line for line in userslist_operation.readlines()]
 
@@ -112,20 +143,23 @@ def server() -> None:
                     requestedpassword = (socket_connection.recv(32)).decode()
                     requestedpassword = requestedpassword[10:]
                     
-                    userslistpath = "/root/db/userslist.txt"
+                    userslistpath = script_path + "/db/userslist.txt"
                     f = open(userslistpath,"a+")
                     f.write(requesteduserid + "\n")
                     f.close()
 
-                    usernamepath = "/root/db/usersinfo/"+requesteduserid+".username.txt"
+                    usernamepath = script_path + "/db/usersinfo/" + requesteduserid + ".username.txt"
                     f = open(usernamepath,"a+")
                     f.write(requesteduserid)
                     f.close()
 
-                    passpath = "/root/db/usersinfo/"+requesteduserid+".pass.txt"
+                    passpath = script_path + "/db/usersinfo/" + requesteduserid + ".pass.txt"
                     f = open(passpath,"a+")
                     f.write(requestedpassword)
                     f.close()
+
+                    user_message_path = script_path + "/db/messages/" + requesteduserid
+                    Path(user_message_path).mkdir(parents=True, exist_ok=True)
 
                     socket_connection.send("prompt:You have been registered successfully. Now please log in.".encode())
                     return True
@@ -135,7 +169,7 @@ def server() -> None:
 
             def SignIn():
 
-                userslist_path = "/root/db/userslist.txt"
+                userslist_path = script_path + "/db/userslist.txt"
                 userslist_operation = open(userslist_path, "r+")
                 userslist = [line for line in userslist_operation.readlines()]
 
@@ -147,16 +181,15 @@ def server() -> None:
                 password = password[10:]
 
                 if username+"\n" in userslist:
-                    correctpasspath = "/root/db/usersinfo/"+username+".pass.txt"
+                    correctpasspath = script_path + "/db/usersinfo/"+username+".pass.txt"
                     with open(correctpasspath, 'r') as key:
                         correctpass = key.read().rstrip()
 
                     if password == correctpass:
                         socket_connection.send("prompt:Logged in successfully!".encode())
                         yourid = "yourid" + username
-                        print("sending messge:")
-                        print(yourid)
                         socket_connection.send(yourid.encode())
+                        print("User %s logged in" % (username))
                         return True
                     else:
                         socket_connection.send("prompt:Username or Password in incorrect. Try again!".encode())
